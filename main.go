@@ -1,13 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fogleman/gg"
+	"github.com/joho/godotenv"
 )
 
-func textToImageHandler(w http.ResponseWriter, r *http.Request) {
+func init() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("No .env file found")
+	}
+}
+func textToImageHandler(w http.ResponseWriter, r *http.Request, fontSize float64, fontPath string) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -30,7 +40,7 @@ func textToImageHandler(w http.ResponseWriter, r *http.Request) {
 	width += 2 * padding  // Add padding to the width
 	height += 2 * padding // Add padding to the height
 
-	if err := dc.LoadFontFace("./HackNerdFont-Bold.ttf", 24); err != nil {
+	if err := dc.LoadFontFace(fontPath, fontSize); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -48,13 +58,28 @@ func textToImageHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// Simple dynamic route handling
+	port, exists := os.LookupEnv("PORT")
+	if !exists {
+		port = "8080" // Default port
+	}
+
+	fontSizeStr, exists := os.LookupEnv("FONTSIZE")
+	if !exists {
+		fontSizeStr = "24" // Default font size
+	}
+	fontSize, _ := strconv.ParseFloat(fontSizeStr, 64)
+
+	fontPath, exists := os.LookupEnv("FONTPATH")
+	if !exists {
+		fontPath = "./HackNerdFont-Bold.ttf" // Default font path
+	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/text-to-image/") {
-			textToImageHandler(w, r)
+			textToImageHandler(w, r, fontSize, fontPath)
 		} else {
 			http.NotFound(w, r)
 		}
 	})
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+port, nil)
 }

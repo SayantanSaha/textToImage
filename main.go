@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/fogleman/gg"
 	"github.com/gin-gonic/gin"
@@ -33,7 +36,8 @@ func main() {
 func textToImageHandler(c *gin.Context) {
 	text := c.Param("text")
 	//logRequest(c.Request, text)
-
+	safeText := url.PathEscape(strings.ReplaceAll(text, "/", "_")) // Basic sanitization for filename
+	text = safeText
 	dc := gg.NewContext(100, 100)
 	if err := dc.LoadFontFace(fontPath, fontSize); err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load font face")
@@ -55,7 +59,7 @@ func textToImageHandler(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Failed to encode image")
 		return
 	}
-
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.png", text))
 	c.Data(http.StatusOK, "image/png", buf.Bytes())
 }
 

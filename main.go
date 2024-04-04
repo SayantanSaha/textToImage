@@ -37,19 +37,25 @@ func textToImageHandler(c *gin.Context) {
 	text := c.Param("text")
 	//logRequest(c.Request, text)
 	safeText := url.PathEscape(strings.ReplaceAll(text, "/", "_")) // Basic sanitization for filename
-	text = safeText
+	cleantext, err := url.QueryUnescape(safeText)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	log.Printf("Input text is : %v", safeText)
+	log.Printf("Cleaned text is : %v", cleantext)
 	dc := gg.NewContext(100, 100)
 	if err := dc.LoadFontFace(fontPath, fontSize); err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load font face")
 		return
 	}
 
-	width, height := dc.MeasureString(text)
+	width, height := dc.MeasureString(cleantext)
 	dc = gg.NewContext(int(width)+10, int(height)+10) // Add some padding
 	dc.SetRGBA(0, 0, 0, 0)                            // Transparent background
 	dc.Clear()
 	dc.SetRGB(0, 0, 0) // Black text
-	dc.DrawStringAnchored(text, width/2, height/2, 0.5, 0.5)
+	dc.DrawStringAnchored(cleantext, width/2, height/2, 0.5, 0.5)
 	dc.Clip()
 
 	//logResponse(text, int(width)+10, int(height)+10)
@@ -59,7 +65,7 @@ func textToImageHandler(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Failed to encode image")
 		return
 	}
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.png", text))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.png", cleantext))
 	c.Data(http.StatusOK, "image/png", buf.Bytes())
 }
 
